@@ -100,7 +100,7 @@ def smsforward(looping=False):
                     print(f"{f} found")
                     for m in mnumber_s:
                         print(f"Forwarding to {m}")
-                        resp = os.popen(f"termux-sms-send -n {m}")  # forwarding sms to predefined mobile number(s)
+                        resp = os.popen(f"termux-sms-send -n {m} {j}")  # forwarding sms to predefined mobile number(s)
                         tfile = open(tmpFile, "w")
                         tfile.write(j['received'])
                         tfile.close()
