@@ -90,21 +90,55 @@ def smsforward(looping=False):
             looper = True  # This will keep the script after defined interval
             print("You can stop the script anytime by pressing Ctrl+C")
     print(f"Last SMS forwarded on {lastSMS}")
-    jdata = os.popen("termux-sms-list -l 50").read()  # Reading latest 50 SMSs using termux-api
-    jd = json.loads(jdata)  # storing JSON output
-    print(f"Reading {len(jd)} latest SMSs")
-    for j in jd:
-        if datetime.datetime.fromisoformat(j['received']) > lastSMS:  # Comparing SMS timing
-            for f in filter_s:
-                if f in j['body'].lower() and j['type'] == "inbox":  # Checking if the SMS is in inbox and the filter(s) are matching
-                    print(f"{f} found")
-                    for m in mnumber_s:
-                        print(f"Forwarding to {m}")
-                        resp = os.popen(f"termux-sms-send -n {m} {j[body]}")  # forwarding sms to predefined mobile number(s)
-                        tfile = open(tmpFile, "w")
-                        tfile.write(j['received'])
-                        tfile.close()
-# calling sms forward function for the first time
+    
+
+# Define your variables and settings
+filter_s = ["keyword1", "keyword2"]  # List of keywords to filter SMS messages
+mnumber_s = ["1234567890", "0987654321"]  # List of numbers to forward SMS to
+tmpFile = "/path/to/tmpfile"  # Path to the temporary file where last SMS timestamp is stored
+
+# Function to get the timestamp of the last processed SMS
+def get_last_sms_timestamp():
+    try:
+        with open(tmpFile, "r") as tfile:
+            last_sms_time = tfile.read().strip()
+            return datetime.datetime.fromisoformat(last_sms_time)
+    except (FileNotFoundError, ValueError):
+        return datetime.datetime.min  # Return a very old date if file not found or date is invalid
+
+# Function to update the timestamp of the last processed SMS
+def update_last_sms_timestamp(timestamp):
+    with open(tmpFile, "w") as tfile:
+        tfile.write(timestamp.isoformat())
+
+# Main function to read and process SMS
+def process_sms():
+    try:
+        jdata = os.popen("termux-sms-list -l 50").read()  # Read the latest 50 SMSs
+        jd = json.loads(jdata)  # Load JSON data
+        print(f"Reading {len(jd)} latest SMSs")
+
+        last_sms = get_last_sms_timestamp()
+
+        for j in jd:
+            received_time = datetime.datetime.fromisoformat(j['received'])
+            if received_time > last_sms:  # Check if SMS is newer than the last processed SMS
+                if j['type'] == "inbox":  # Ensure SMS is in the inbox
+                    for f in filter_s:
+                        if f in j['body'].lower():  # Check if SMS body matches any filter
+                            print(f"{f} found")
+                            for m in mnumber_s:
+                                print(f"Forwarding to {m}")
+                                os.system(f"termux-sms-send -n {m} {j['body']}")  # Forward SMS
+                                update_last_sms_timestamp(received_time)  # Update last SMS timestamp
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Call the function to process SMS
+if __name__ == "__main__":
+    process_sms()
+
 smsforward()
 # if user decided to repeat the script exexcution, the following loop will do that
 while looper:
